@@ -128,7 +128,17 @@ document.querySelectorAll('[data-i]').forEach(b=>ic(b,b.dataset.i));
 const canShare=!!navigator.mediaDevices?.getDisplayMedia;
 const ALPHA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const genCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>ALPHA[b%ALPHA.length]).join('');
-let peer,conn,role,code,myName,peerName='',localStream,call,sharing=false,remoteSharing=false,leaving=false,noRetry=false,retryT=0,unread=0,fsTheater=false,hideT,toastT,wl;
+let peer,conn,role,code,myName,peerName='',localStream,call,sharing=false,remoteSharing=false,leaving=false,noRetry=false,retryT=0,watchdogT=0,unread=0,fsTheater=false,hideT,toastT,wl;
+
+const PEER_CONFIG={
+ config:{
+  iceServers:[
+   {urls:'stun:stun.l.google.com:19302'},
+   {urls:'stun:stun1.l.google.com:19302'},
+   {urls:'stun:stun2.l.google.com:19302'}
+  ]
+ }
+};
 
 /* ---------- lobby ---------- */
 const hash=location.hash.slice(1).toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -142,36 +152,87 @@ cd.onkeydown=e=>{if(e.key==='Enter')$('join').click()};
 function setStatus(t,k){st.textContent=t;dot.style.background=k==='ok'?'var(--ok)':k==='err'?'var(--er)':'var(--wa)'}
 function start(r,c){
  try{peer?.destroy()}catch{}
- role=r;code=c;leaving=false;noRetry=false;
+ role=r;code=c;leaving=false;noRetry=false;clearTimeout(retryT);clearTimeout(watchdogT);
  myName=(nm.value.trim()||(r==='host'?'Host':'Guest')).slice(0,20);
  $('lobby').hidden=true;$('app').hidden=false;setStatus('Connecting…');render();
  if(!window.Peer){setStatus('Could not load connection library','err');return}
- peer=r==='host'?new Peer('wt-'+c):new Peer();
+ 
+ peer=r==='host'?new Peer('wt-'+c,PEER_CONFIG):new Peer(PEER_CONFIG);
  peer.on('open',()=>{r==='host'?setStatus('Waiting for your friend'):connectToHost()});
  peer.on('connection',c2=>{
-  if(conn?.open){c2.on('open',()=>{c2.send({t:'full'});setTimeout(()=>c2.close(),400)});return}
-  setupConn(c2)});
+  // Replace previous stale connection if present
+  if(conn&&conn!==c2){try{conn.close()}catch{}}
+  setupConn(c2);
+ });
  peer.on('call',cl=>{cl.answer();call=cl;cl.on('stream',showRemote);cl.on('close',()=>{if(call===cl)clearRemote()})});
- peer.on('disconnected',()=>{if(!leaving&&!peer.destroyed)peer.reconnect()});
+ peer.on('disconnected',()=>{if(!leaving&&!peer?.destroyed)peer.reconnect()});
  peer.on('error',e=>{
   if(e.type==='unavailable-id'&&role==='host')return start('host',genCode());
   if(e.type==='peer-unavailable'){setStatus('Room not found, retrying…','warn');return retry()}
-  setStatus('Connection problem ('+e.type+')','err')});
+  setStatus('Connection problem ('+e.type+')','err');
+ });
 }
-function connectToHost(){if(!peer||peer.destroyed)return;setStatus('Connecting…');setupConn(peer.connect('wt-'+code,{reliable:true}))}
-function retry(){if(retryT||leaving||noRetry||role!=='guest')return;retryT=setTimeout(()=>{retryT=0;connectToHost()},2500)}
+
+function connectToHost(){
+ if(!peer||peer.destroyed||leaving)return;
+ setStatus('Connecting…');
+ clearTimeout(watchdogT);
+ const c2=peer.connect('wt-'+code);
+ setupConn(c2);
+ // Watchdog: if not connected within 6s, retry
+ watchdogT=setTimeout(()=>{
+  if(!conn?.open&&role==='guest'&&!leaving){retry()}
+ },6000);
+}
+
+function retry(){
+ if(retryT||leaving||noRetry||role!=='guest')return;
+ retryT=setTimeout(()=>{retryT=0;connectToHost()},2500);
+}
+
 function setupConn(c2){
- c2.on('open',()=>{conn=c2;c2.send({t:'hi',name:myName});render()});
+ const onOpen=()=>{
+  clearTimeout(watchdogT);
+  conn=c2;
+  c2.send({t:'hi',name:myName});
+  setStatus(peerName?'Connected · '+peerName:'Connected','ok');
+  render();
+ };
+
+ // Handle race condition: c2 might already be open
+ if(c2.open){onOpen()}
+ else{c2.on('open',onOpen)}
+
  c2.on('data',onData);
- c2.on('close',()=>{if(conn!==c2)return;conn=null;const n=peerName;peerName='';stopShare();clearRemote();if(n)sys(n+' left');setStatus(role==='host'?'Waiting for your friend':'Reconnecting…','warn');render();retry()});
+ c2.on('error',err=>{console.warn('Data channel error:',err);c2.close()});
+ c2.on('close',()=>{
+  if(conn&&conn!==c2)return;
+  conn=null;
+  const n=peerName;peerName='';
+  stopShare();clearRemote();
+  if(n)sys(n+' left');
+  setStatus(role==='host'?'Waiting for your friend':'Reconnecting…','warn');
+  render();
+  retry();
+ });
 }
+
 function onData(d){
  if(d.t==='full'){noRetry=true;setStatus('Room is full','err')}
- else if(d.t==='hi'){peerName=String(d.name||'Friend').slice(0,20);sys(peerName+' joined');setStatus('Connected · '+peerName,'ok');if(sharing){conn.send({t:'share',on:true});placeCall()}render()}
+ else if(d.t==='hi'){
+  peerName=String(d.name||'Friend').slice(0,20);
+  sys(peerName+' joined');
+  setStatus('Connected · '+peerName,'ok');
+  // Two-way handshake acknowledgment
+  if(!d.ack&&conn?.open){conn.send({t:'hi',name:myName,ack:true})}
+  if(sharing){conn.send({t:'share',on:true});placeCall()}
+  render();
+ }
  else if(d.t==='chat')addMsg(String(d.text).slice(0,500),false);
  else if(d.t==='share'){
   if(d.on&&sharing){if(role==='host')return;stopShare()}
-  remoteSharing=!!d.on;if(!d.on)clearRemote();render()}
+  remoteSharing=!!d.on;if(!d.on)clearRemote();render();
+ }
 }
 
 /* ---------- screen sharing ---------- */
@@ -269,5 +330,5 @@ async function copyInvite(b){
  catch{prompt('Copy this invite link:',inviteURL())}
 }
 $('bInv').onclick=e=>copyInvite(e.currentTarget);mcopy.onclick=e=>copyInvite(e.currentTarget);
-$('bLeave').onclick=()=>{leaving=true;stopShare();try{peer.destroy()}catch{}location.replace(location.href.split('#')[0])};
+$('bLeave').onclick=()=>{leaving=true;stopShare();try{peer?.destroy()}catch{}location.replace(location.href.split('#')[0])};
 </script></body></html>
