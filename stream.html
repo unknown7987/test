@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0e13">
+<title>Watch Together</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+<style>
+:root{color-scheme:dark;--bg:#0c0e13;--pn:#14171e;--ln:#252a35;--tx:#e9ebf2;--mu:#8b92a3;--ac:#8ea2ff;--ok:#3ddc97;--wa:#ffb454;--er:#ff6b6b}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+.mu{color:var(--mu)}.small{font-size:13px}.sp{flex:1}
+.b{background:rgba(255,255,255,.1);border:0;height:40px;min-width:40px;padding:0 12px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;position:relative}
+.b:hover{background:rgba(255,255,255,.18)}.b:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.b.pri{background:var(--ac);color:#0c0e13;font-weight:600}.b.pri:hover{filter:brightness(1.1)}
+.b.dng{background:var(--er);color:#190606;font-weight:600}
+.b:disabled{opacity:.4;cursor:not-allowed}
+input{background:#0c0e13;border:1px solid var(--ln);border-radius:10px;height:42px;padding:0 12px;width:100%;min-width:0}
+/* lobby */
+#lobby{height:100%;display:grid;place-items:center;padding:20px;overflow:auto}
+.card{width:min(380px,100%);display:grid;gap:14px}
+h1{margin:0;font-size:30px;letter-spacing:-.02em}
+.card p{margin:0}
+.card label{display:grid;gap:6px;color:var(--mu);font-size:13px}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.card .row{flex-wrap:nowrap}
+#cd{text-transform:uppercase;letter-spacing:.25em;font-weight:700;text-align:center}
+.or{color:var(--mu);font-size:13px;text-align:center}
+/* app */
+#app{height:100dvh;display:grid;grid-template-rows:auto 1fr}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));border-bottom:1px solid var(--ln)}
+header .b{height:34px;font-size:13px}
+#dot{width:9px;height:9px;border-radius:50%;background:var(--wa);flex:none}
+#st{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0}
+.stage{position:relative;background:#000;overflow:hidden;min-height:0}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:none}
+video.on{display:block}
+#msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:16px 16px 64px}
+#msg h2{margin:0;font-size:20px;font-weight:600}#msg p{margin:0;max-width:34ch}
+.code{font:700 clamp(28px,6vw,44px)/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.22em;padding-left:.22em}
+#play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+#toast{position:absolute;left:12px;top:12px;max-width:calc(100% - 24px);padding:8px 12px;background:rgba(12,14,19,.88);border-radius:10px;font-size:14px;pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ctl{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:28px 12px 10px;padding-bottom:max(10px,env(safe-area-inset-bottom));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));background:linear-gradient(transparent,rgba(0,0,0,.75));transition:opacity .25s}
+#ctl.hide{opacity:0;pointer-events:none}.stage:has(#ctl.hide){cursor:none}
+#vol{display:flex;align-items:center;gap:6px}
+#vr{width:90px;height:20px;padding:0;border:0;background:none;accent-color:var(--ac)}
+@media(pointer:coarse){#vr{display:none}}
+#badge{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;background:var(--er)}
+.chat{display:flex;flex-direction:column;min-height:0;background:var(--pn);border-left:1px solid var(--ln)}
+.chead{display:none;align-items:center;justify-content:space-between;padding:8px 10px 8px 14px;border-bottom:1px solid var(--ln)}
+#log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+.m{max-width:86%;padding:7px 11px;border-radius:14px;overflow-wrap:anywhere;white-space:pre-wrap}
+.m a{color:inherit;text-decoration:underline}
+.m.me{align-self:flex-end;background:#33407f;border-bottom-right-radius:4px}
+.m.them{align-self:flex-start;background:#232834;border-bottom-left-radius:4px}
+.m.sys{align-self:center;color:var(--mu);font-size:13px;padding:2px}
+#f{display:flex;gap:8px;padding:10px;padding-bottom:max(10px,env(safe-area-inset-bottom));border-top:1px solid var(--ln)}
+#inp{font-size:16px}
+/* stacked: portrait / narrow */
+@media(orientation:portrait),(max-width:819px){
+ main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+ .stage{aspect-ratio:16/9;min-height:210px}
+ .chat{border-left:0;border-top:1px solid var(--ln)}
+}
+/* theater + landscape-phone: video owns the screen, chat is an overlay */
+body.theater header,body.ov header{display:none}
+body.theater #app,body.ov #app{grid-template-rows:1fr}
+body.theater main,body.ov main{grid-template-columns:1fr;grid-template-rows:1fr}
+body.theater .stage,body.ov .stage{aspect-ratio:auto;height:100dvh}
+body.theater .chat,body.ov .chat{position:fixed;z-index:20;top:0;right:0;bottom:0;width:min(340px,80vw);border:0;border-left:1px solid var(--ln);background:rgba(20,23,30,.97);transform:translateX(100%);visibility:hidden;transition:transform .22s,visibility .22s}
+body.theater .chat.open,body.ov .chat.open{transform:none;visibility:visible}
+body.theater .chead,body.ov .chead{display:flex}
+@media(orientation:portrait){body.theater .chat{top:auto;left:0;width:100%;height:58dvh;border-left:0;border-top:1px solid var(--ln);transform:translateY(100%)}}
+body:not(.theater):not(.ov) #bChat{display:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+
+<div id="lobby"><div class="card">
+ <h1>Watch Together</h1>
+ <p class="mu">A private screen share and chat for two. Direct connection, no accounts.</p>
+ <label>Your name<input id="nm" maxlength="20" placeholder="Optional" autocomplete="nickname"></label>
+ <button class="b pri" id="create">Create room</button>
+ <div class="or">or join your friend’s room</div>
+ <div class="row"><input id="cd" maxlength="6" placeholder="CODE" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="b" id="join">Join</button></div>
+ <p class="mu small" id="note"></p>
+</div></div>
+
+<div id="app" hidden>
+ <header><span id="dot"></span><span id="st"></span><span class="sp"></span><button class="b" id="bInv">Copy invite</button><button class="b" id="bLeave">Leave</button></header>
+ <main>
+  <section class="stage" id="stage">
+   <video id="v" playsinline autoplay></video>
+   <div id="msg"><h2 id="mt"></h2><p id="ms" class="mu"></p><div id="mc" class="code" hidden></div>
+    <div class="row"><button class="b" id="mcopy" hidden>Copy invite link</button><button class="b pri" id="mshare" hidden>Share screen</button></div></div>
+   <button class="b pri" id="play" hidden>Tap to play</button>
+   <div id="toast" hidden></div>
+   <div id="ctl">
+    <button class="b pri" id="bShare" hidden><span id="shl">Share</span></button>
+    <span id="vol" hidden><button class="b" id="bMute" data-i="vol" aria-label="Mute"></button><input id="vr" type="range" min="0" max="1" step=".05" value="1" aria-label="Volume"></span>
+    <span class="sp"></span>
+    <button class="b" id="bChat" data-i="chat" aria-label="Chat (C)"><i id="badge" hidden></i></button>
+    <button class="b" id="bTh" data-i="th" aria-label="Theater mode (T)"></button>
+    <button class="b" id="bFs" data-i="fs" aria-label="Fullscreen (F)"></button>
+   </div>
+  </section>
+  <aside class="chat" id="chat">
+   <div class="chead"><b>Chat</b><button class="b" id="cclose" aria-label="Close chat">✕</button></div>
+   <div id="log"></div>
+   <form id="f"><input id="inp" placeholder="Message" autocomplete="off" maxlength="500"><button class="b pri" data-i="send" aria-label="Send"></button></form>
+  </aside>
+ </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $=i=>document.getElementById(i);
+const [v,msg,mt,ms,mc,mcopy,mshare,play,toastEl,ctl,bShare,shl,vol,bMute,vr,bChat,badge,bTh,bFs,chat,log,inp,dot,st,stage,nm,cd]=
+ 'v msg mt ms mc mcopy mshare play toast ctl bShare shl vol bMute vr bChat badge bTh bFs chat log inp dot st stage nm cd'.split(' ').map($);
+const I={share:'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>',
+ vol:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',mute:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6m0-6 6 6"/>',
+ chat:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',th:'<rect x="2" y="6" width="20" height="12" rx="1.5"/>',
+ fs:'<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>',send:'<path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/>'};
+const ic=(b,n)=>{b.querySelector('svg')?.remove();b.insertAdjacentHTML('afterbegin',`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`)};
+document.querySelectorAll('[data-i]').forEach(b=>ic(b,b.dataset.i));
+
+const canShare=!!navigator.mediaDevices?.getDisplayMedia;
+const ALPHA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const genCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>ALPHA[b%ALPHA.length]).join('');
+let peer,conn,role,code,myName,peerName='',localStream,call,sharing=false,remoteSharing=false,leaving=false,noRetry=false,retryT=0,unread=0,fsTheater=false,hideT,toastT,wl;
+
+/* ---------- lobby ---------- */
+const hash=location.hash.slice(1).toUpperCase().replace(/[^A-Z0-9]/g,'');
+if(hash.length===6){cd.value=hash;$('note').textContent='You’ve been invited. Enter your name (optional) and press Join.'}
+else $('note').textContent=canShare?'':'Phones can’t share their screen, but they can watch and chat.';
+$('create').onclick=()=>start('host',genCode());
+$('join').onclick=()=>{const c=cd.value.trim().toUpperCase();if(c.length===6)start('guest',c);else cd.focus()};
+cd.onkeydown=e=>{if(e.key==='Enter')$('join').click()};
+
+/* ---------- connection ---------- */
+function setStatus(t,k){st.textContent=t;dot.style.background=k==='ok'?'var(--ok)':k==='err'?'var(--er)':'var(--wa)'}
+function start(r,c){
+ try{peer?.destroy()}catch{}
+ role=r;code=c;leaving=false;noRetry=false;
+ myName=(nm.value.trim()||(r==='host'?'Host':'Guest')).slice(0,20);
+ $('lobby').hidden=true;$('app').hidden=false;setStatus('Connecting…');render();
+ if(!window.Peer){setStatus('Could not load connection library','err');return}
+ peer=r==='host'?new Peer('wt-'+c):new Peer();
+ peer.on('open',()=>{r==='host'?setStatus('Waiting for your friend'):connectToHost()});
+ peer.on('connection',c2=>{
+  if(conn?.open){c2.on('open',()=>{c2.send({t:'full'});setTimeout(()=>c2.close(),400)});return}
+  setupConn(c2)});
+ peer.on('call',cl=>{cl.answer();call=cl;cl.on('stream',showRemote);cl.on('close',()=>{if(call===cl)clearRemote()})});
+ peer.on('disconnected',()=>{if(!leaving&&!peer.destroyed)peer.reconnect()});
+ peer.on('error',e=>{
+  if(e.type==='unavailable-id'&&role==='host')return start('host',genCode());
+  if(e.type==='peer-unavailable'){setStatus('Room not found, retrying…','warn');return retry()}
+  setStatus('Connection problem ('+e.type+')','err')});
+}
+function connectToHost(){if(!peer||peer.destroyed)return;setStatus('Connecting…');setupConn(peer.connect('wt-'+code,{reliable:true}))}
+function retry(){if(retryT||leaving||noRetry||role!=='guest')return;retryT=setTimeout(()=>{retryT=0;connectToHost()},2500)}
+function setupConn(c2){
+ c2.on('open',()=>{conn=c2;c2.send({t:'hi',name:myName});render()});
+ c2.on('data',onData);
+ c2.on('close',()=>{if(conn!==c2)return;conn=null;const n=peerName;peerName='';stopShare();clearRemote();if(n)sys(n+' left');setStatus(role==='host'?'Waiting for your friend':'Reconnecting…','warn');render();retry()});
+}
+function onData(d){
+ if(d.t==='full'){noRetry=true;setStatus('Room is full','err')}
+ else if(d.t==='hi'){peerName=String(d.name||'Friend').slice(0,20);sys(peerName+' joined');setStatus('Connected · '+peerName,'ok');if(sharing){conn.send({t:'share',on:true});placeCall()}render()}
+ else if(d.t==='chat')addMsg(String(d.text).slice(0,500),false);
+ else if(d.t==='share'){
+  if(d.on&&sharing){if(role==='host')return;stopShare()}
+  remoteSharing=!!d.on;if(!d.on)clearRemote();render()}
+}
+
+/* ---------- screen sharing ---------- */
+async function startShare(){
+ if(!conn?.open||sharing||remoteSharing)return;
+ try{localStream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:30,max:60}},audio:true})}catch{return}
+ const vt=localStream.getVideoTracks()[0];vt.contentHint='motion';vt.onended=stopShare;
+ sharing=true;conn.send({t:'share',on:true});placeCall();wake();render();
+}
+function placeCall(){
+ if(!localStream||!conn?.open)return;
+ const c=call=peer.call(conn.peer,localStream);
+ setTimeout(()=>{try{c.peerConnection.getSenders().forEach(s=>{if(s.track?.kind==='video'){const p=s.getParameters();p.encodings=p.encodings?.length?p.encodings:[{}];p.encodings[0].maxBitrate=6e6;p.degradationPreference='maintain-framerate';s.setParameters(p)}})}catch{}},1500);
+}
+function stopShare(){
+ if(!sharing)return;sharing=false;
+ localStream?.getTracks().forEach(t=>t.stop());localStream=null;
+ try{call?.close()}catch{}call=null;
+ try{conn?.open&&conn.send({t:'share',on:false})}catch{}
+ render();
+}
+function showRemote(s){remoteSharing=true;v.srcObject=s;tryPlay();wake();render()}
+function clearRemote(){remoteSharing=false;v.srcObject=null;play.hidden=true;render()}
+async function tryPlay(){
+ v.muted=false;
+ try{await v.play();play.hidden=true}
+ catch{v.muted=true;try{await v.play();toast('Muted by browser. Tap the speaker to unmute.')}catch{play.hidden=false}}
+}
+play.onclick=()=>{v.muted=false;v.play();play.hidden=true};
+v.onvolumechange=()=>ic(bMute,v.muted||!v.volume?'mute':'vol');
+bMute.onclick=()=>{v.muted=!v.muted};
+vr.oninput=()=>{v.volume=vr.value;v.muted=false};
+async function wake(){try{wl=await navigator.wakeLock?.request('screen')}catch{}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(v.srcObject||sharing))wake()});
+bShare.onclick=mshare.onclick=()=>sharing?stopShare():startShare();
+
+/* ---------- render ---------- */
+function render(){
+ const c=!!conn?.open,vid=!!v.srcObject&&remoteSharing;
+ v.classList.toggle('on',vid);msg.hidden=vid;vol.hidden=!vid;
+ let t,s='',showCode=false;
+ if(!c){showCode=role==='host';t=showCode?'Waiting for your friend':'Connecting…';s=showCode?'Send them the invite link or this code':'Looking for the room'}
+ else if(sharing){t='You’re sharing your screen';s='Your friend can see it. Use Stop below to end it.'}
+ else if(remoteSharing){t='Starting stream…'}
+ else{t='Nobody is sharing';s=canShare?'Share a screen, window or tab. Tick “share audio” to include sound.':'Phones can’t share screens, but you can watch and chat.'}
+ mt.textContent=t;ms.textContent=s;ms.hidden=!s;mc.hidden=mcopy.hidden=!showCode;mc.textContent=code;
+ mshare.hidden=!(c&&canShare&&!sharing&&!remoteSharing);
+ bShare.hidden=!canShare;bShare.disabled=!c||(remoteSharing&&!sharing);
+ bShare.classList.toggle('dng',sharing);bShare.classList.toggle('pri',!sharing);
+ ic(bShare,sharing?'stop':'share');shl.textContent=sharing?'Stop':'Share';
+ poke();
+}
+function poke(){ctl.classList.remove('hide');clearTimeout(hideT);if(v.srcObject&&remoteSharing)hideT=setTimeout(()=>ctl.classList.add('hide'),3000)}
+['pointermove','pointerdown','keydown'].forEach(e=>stage.addEventListener(e,poke));
+function toast(t,ms=4000){toastEl.textContent=t;toastEl.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.hidden=true,ms)}
+
+/* ---------- chat ---------- */
+const overlay=()=>document.body.classList.contains('theater')||document.body.classList.contains('ov');
+function setChat(o){chat.classList.toggle('open',o);if(o){unread=0;badge.hidden=true;log.scrollTop=log.scrollHeight;if(matchMedia('(pointer:fine)').matches)setTimeout(()=>inp.focus(),50)}}
+function addMsg(text,mine){
+ const d=document.createElement('div');d.className='m '+(mine?'me':'them');
+ text.split(/(https?:\/\/[^\s]+)/g).forEach((p,i)=>{if(i%2){const a=document.createElement('a');a.href=p;a.textContent=p;a.target='_blank';a.rel='noopener noreferrer';d.append(a)}else d.append(p)});
+ log.append(d);log.scrollTop=log.scrollHeight;
+ if(!mine&&overlay()&&!chat.classList.contains('open')){unread++;badge.hidden=false;toast((peerName||'Friend')+': '+text)}
+}
+function sys(t){const d=document.createElement('div');d.className='m sys';d.textContent=t;log.append(d);log.scrollTop=log.scrollHeight}
+$('f').onsubmit=e=>{e.preventDefault();const t=inp.value.trim();if(!t)return;
+ if(!conn?.open){toast('Not connected yet');return}
+ conn.send({t:'chat',text:t});addMsg(t,true);inp.value=''};
+bChat.onclick=()=>setChat(!chat.classList.contains('open'));$('cclose').onclick=()=>setChat(false);
+
+/* ---------- theater / fullscreen ---------- */
+function setTheater(on){document.body.classList.toggle('theater',on);setChat(false);bTh.setAttribute('aria-pressed',on)}
+bTh.onclick=()=>setTheater(!document.body.classList.contains('theater'));
+const mq=matchMedia('(orientation:landscape) and (max-height:540px)');
+const onMq=()=>{document.body.classList.toggle('ov',mq.matches);setChat(false)};mq.onchange=onMq;onMq();
+if(!document.documentElement.requestFullscreen)bFs.hidden=true;
+bFs.onclick=()=>{
+ if(document.fullscreenElement)return document.exitFullscreen();
+ document.documentElement.requestFullscreen().then(()=>{if(!document.body.classList.contains('theater')){setTheater(true);fsTheater=true}}).catch(()=>{});
+};
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&fsTheater){fsTheater=false;setTheater(false)}});
+stage.ondblclick=e=>{if(!e.target.closest('button,input'))bFs.click()};
+document.addEventListener('keydown',e=>{
+ if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;
+ const k=e.key.toLowerCase();
+ if(k==='t')bTh.click();else if(k==='f')bFs.click();else if(k==='c'&&overlay())bChat.click();else if(k==='m')bMute.click();
+ else if(k==='escape'){if(chat.classList.contains('open'))setChat(false);else if(document.body.classList.contains('theater')&&!document.fullscreenElement)setTheater(false)}
+});
+
+/* ---------- invite / leave ---------- */
+const inviteURL=()=>location.href.split('#')[0]+'#'+code;
+async function copyInvite(b){
+ try{await navigator.clipboard.writeText(inviteURL());const o=b.textContent;b.textContent='Copied';setTimeout(()=>b.textContent=o,1500)}
+ catch{prompt('Copy this invite link:',inviteURL())}
+}
+$('bInv').onclick=e=>copyInvite(e.currentTarget);mcopy.onclick=e=>copyInvite(e.currentTarget);
+$('bLeave').onclick=()=>{leaving=true;stopShare();try{peer.destroy()}catch{}location.replace(location.href.split('#')[0])};
+</script></body></html>
