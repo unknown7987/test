@@ -130,14 +130,30 @@ const ALPHA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const genCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>ALPHA[b%ALPHA.length]).join('');
 let peer,conn,role,code,myName,peerName='',localStream,call,sharing=false,remoteSharing=false,leaving=false,noRetry=false,retryT=0,watchdogT=0,unread=0,fsTheater=false,hideT,toastT,wl;
 
-const PEER_CONFIG={
- config:{
-  iceServers:[
-   {urls:'stun:stun.l.google.com:19302'},
-   {urls:'stun:stun1.l.google.com:19302'},
-   {urls:'stun:stun2.l.google.com:19302'}
-  ]
- }
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      // Free public TURN server (OpenRelay)
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ]
+  }
 };
 
 /* ---------- lobby ---------- */
